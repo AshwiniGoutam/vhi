@@ -143,6 +143,18 @@ Quick actions: **Publish / Unpublish** on every list with a visibility field, an
 
 Business rules are all data, editable in admin: meal-plan eligibility (default “3 nights or more”, per meal plan), Darshan minimum group (4) and advance booking (15 days) per tour, hold minutes, GST rates, WhatsApp recipients, prices, weekend/seasonal pricing, offers and coupons.
 
+### Villas: book the whole home or individual rooms
+
+Admin → Properties → (villa) → **Individual rooms**: switch on *Guests can also book individual rooms* and add each room (name, beds, guests, nightly and weekend rate, photo). Guests then choose **Entire home** or **Choose rooms** on the property page. Availability follows Airbnb's linked-calendar rule:
+- booking the **entire home** blocks every room for those nights;
+- booking a **room** blocks the entire home, but the other rooms stay bookable.
+
+To close just one room (e.g. a room sold on Airbnb), add an Availability Block with that room's key. The holds index is upgraded automatically on the first booking; on production you can also run `npm run db:indexes` once.
+
+### Website offer pop-up
+
+Admin → Coupons → (coupon) → **Website pop-up**: tick *Show as website pop-up* and set the headline, text and button label. Visitors see it 5 seconds after arriving (not on checkout/booking pages). "Maybe later" hides it for 3 days. The code can be copied, and it is applied automatically at checkout.
+
 ## 11. Production deployment (Vercel)
 
 1. Push to GitHub → import in Vercel (framework: Next.js). **Vercel Pro** is required for the per-minute crons in `vercel.json`.
@@ -186,5 +198,6 @@ docs/                   technical specification, client brief, references
 ```
 
 Money is stored as **integer paise**, dates as IST `YYYY-MM-DD` strings, and every booking keeps a full price snapshot. See `docs/SPEC.md` for the full design.
-#   v h i  
+#   v h i 
+ 
  

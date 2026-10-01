@@ -1,7 +1,7 @@
 import "server-only";
 import { connectDB, isDbConfigured } from "@/server/db/connect";
 import {
-  AddOn, Amenity, Banner, CancellationPolicy, DarshanTour, Experience, Faq, Itinerary, MealPlan, Offer, Page, Property, Reel, StayPackage, Testimonial,
+  AddOn, Amenity, Banner, Coupon, CancellationPolicy, DarshanTour, Experience, Faq, Itinerary, MealPlan, Offer, Page, Property, Reel, StayPackage, Testimonial,
 } from "@/server/models";
 import {
   serialize, type AddOnDTO, type AmenityDTO, type ItineraryDTO, type MealPlanDTO, type OfferDTO, type PackageDTO, type PolicyDTO, type PropertyDTO, type TestimonialDTO, type TourDTO,
@@ -34,6 +34,15 @@ export interface StayFilters {
   sort?: "featured" | "price_asc" | "price_desc";
 }
 
+/** Adds amenity names/icons so cards can show them (one extra query for the whole list). */
+async function withAmenities(props: PropertyDTO[]): Promise<PropertyDTO[]> {
+  const ids = Array.from(new Set(props.flatMap((p) => p.amenityIds ?? [])));
+  if (!ids.length) return props;
+  const all = serialize<AmenityDTO[]>(await Amenity.find({ _id: { $in: ids } }).sort({ sortOrder: 1 }).lean());
+  const byId = new Map(all.map((a) => [a._id, a]));
+  return props.map((p) => ({ ...p, amenities: (p.amenityIds ?? []).map((id) => byId.get(id)).filter((a): a is AmenityDTO => !!a) }));
+}
+
 export function listProperties(filters: StayFilters = {}) {
   return safe<PropertyDTO[]>([], async () => {
     const q: Record<string, unknown> = { ...PUBLISHED, status: { $ne: "inactive" } };
@@ -44,13 +53,13 @@ export function listProperties(filters: StayFilters = {}) {
     if (filters.amenity) q.amenityIds = filters.amenity;
     const sort: Record<string, 1 | -1> =
       filters.sort === "price_asc" ? { "pricing.baseRate": 1 } : filters.sort === "price_desc" ? { "pricing.baseRate": -1 } : { featured: -1, sortOrder: 1, name: 1 };
-    return serialize<PropertyDTO[]>(await Property.find(q).sort(sort).lean());
+    return withAmenities(serialize<PropertyDTO[]>(await Property.find(q).select("-location.exactAddress").sort(sort).lean()));
   });
 }
 
 export const listFeaturedProperties = (limit = 6) =>
   safe<PropertyDTO[]>([], async () =>
-    serialize(await Property.find({ ...PUBLISHED, status: { $ne: "inactive" } }).sort({ featured: -1, sortOrder: 1 }).limit(limit).lean()),
+    withAmenities(serialize<PropertyDTO[]>(await Property.find({ ...PUBLISHED, status: { $ne: "inactive" } }).select("-location.exactAddress").sort({ featured: -1, sortOrder: 1 }).limit(limit).lean())),
   );
 
 export async function getPropertyBySlug(slug: string) {
@@ -75,7 +84,7 @@ export async function getPropertyBySlug(slug: string) {
         addOns: serialize<AddOnDTO[]>(addOns),
         policy: serialize<PolicyDTO | null>(policy),
         testimonials: serialize<TestimonialDTO[]>(testimonials),
-        similar: serialize<PropertyDTO[]>(similar),
+        similar: await withAmenities(serialize<PropertyDTO[]>(similar)),
       };
     },
   );
@@ -224,4 +233,31 @@ export const listSlugs = () =>
       StayPackage.find(PUBLISHED).select("slug").lean<{ slug: string }[]>(),
     ]);
     return { stays: s.map((x) => x.slug), tours: t.map((x) => x.slug), packages: p.map((x) => x.slug) };
+  });
+
+export interface PopupOfferDTO {
+  code: string;
+  title: string;
+  text?: string;
+  ctaLabel?: string;
+  finePrint?: string;
+  type: "percent" | "flat";
+  value: number;
+  maxDiscount?: number;
+  endsAt?: string;
+}
+
+/** The coupon marked "Show as website pop-up" (active, in date, not used up). */
+export const getPopupOffer = () =>
+  safe<PopupOfferDTO | null>(null, async () => {
+    const today = todayIST();
+    const c = await Coupon.findOne({
+      active: true,
+      "popup.enabled": true,
+      $and: [{ $or: [{ startsAt: null }, { startsAt: { $lte: today } }] }, { $or: [{ endsAt: null }, { endsAt: { $gte: today } }] }],
+    })
+      .sort({ updatedAt: -1 })
+      .lean<{ code: string; name: string; type: "percent" | "flat"; value: number; maxDiscount?: number; endsAt?: string; usageLimit?: number; usedCount?: number; popup?: { title?: string; text?: string; ctaLabel?: string; finePrint?: string } }>();
+    if (!c || (c.usageLimit && (c.usedCount ?? 0) >= c.usageLimit)) return null;
+    return { code: c.code, title: c.popup?.title || c.name, text: c.popup?.text, ctaLabel: c.popup?.ctaLabel, finePrint: c.popup?.finePrint, type: c.type, value: c.value, maxDiscount: c.maxDiscount ?? undefined, endsAt: c.endsAt ?? undefined };
   });

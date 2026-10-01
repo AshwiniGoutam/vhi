@@ -89,7 +89,7 @@
   }
   /* Second phrase of a headline: brass colour instead of italics */
   .accent {
-    color: #8a8a8a; /* modern two-tone headline */
+    color: #d31515; /* modern two-tone headline */
     font-style: normal;
   }
   .eyebrow {

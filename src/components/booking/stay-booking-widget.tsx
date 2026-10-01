@@ -21,6 +21,8 @@ export interface WidgetProperty {
   occupancy: { maxGuests: number; maxAdults: number; maxChildren: number };
   stayRules: { minNights: number; maxNights?: number };
   baseRate: number;
+  /** Individually bookable rooms (villas). Empty = whole property only. */
+  rooms?: { key: string; name: string; bedType?: string; maxGuests: number; baseRate: number; bathroom?: string }[];
 }
 
 interface Props {
@@ -47,6 +49,15 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [adults, setAdults] = useState(2);
+  // Whole home vs. individual rooms (Airbnb-style)
+  const roomsOffered = !pkg ? property?.rooms ?? [] : [];
+  const [mode, setMode] = useState<"entire" | "rooms">("entire");
+  const [roomKeys, setRoomKeys] = useState<string[]>([]);
+  const roomsMode = mode === "rooms" && roomsOffered.length > 0;
+  const selectedRooms = roomsOffered.filter((r) => roomKeys.includes(r.key));
+  const roomCap = selectedRooms.reduce((t, r) => t + (r.maxGuests || 2), 0);
+  const capacity = roomsMode ? { maxGuests: roomCap || 1, maxAdults: roomCap || 1, maxChildren: roomCap } : property?.occupancy ?? { maxGuests: 2, maxAdults: 2, maxChildren: 0 };
+  const toggleRoom = (k: string) => setRoomKeys((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
   const [children, setChildren] = useState(0);
   const [childAges, setChildAges] = useState<number[]>([]);
   const [mealPlanId, setMealPlanId] = useState<string>(pkg ? mealPlans[0]?._id ?? "" : "");
@@ -63,12 +74,13 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
   useEffect(() => {
     if (!property) return;
     setLoadingAvailability(true);
-    fetch(`/api/availability?slug=${encodeURIComponent(property.slug)}&days=120`)
+    const roomsParam = roomsMode && roomKeys.length ? `&rooms=${encodeURIComponent(roomKeys.join(","))}` : "";
+    fetch(`/api/availability?slug=${encodeURIComponent(property.slug)}&days=120${roomsParam}`)
       .then((r) => r.json())
       .then((j) => setUnavailable(j?.data?.unavailable ?? []))
       .catch(() => setUnavailable([]))
       .finally(() => setLoadingAvailability(false));
-  }, [property]);
+  }, [property, roomsMode, roomKeys]);
 
   useEffect(() => {
     const m = mealPlans.find((x) => x._id === mealPlanId);
@@ -84,7 +96,7 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
   const addOnList = Object.entries(qty)
     .filter(([, q]) => q > 0)
     .map(([id, q]) => ({ id, qty: q }));
-  const ready = !!property && property.status === "active" && nights > 0 && conflict.length === 0;
+  const ready = !!property && property.status === "active" && nights > 0 && conflict.length === 0 && (!roomsMode || roomKeys.length > 0) && adults + children <= capacity.maxGuests;
 
   const request = ready
     ? {
@@ -96,6 +108,7 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
         children,
         childAges: childAges.slice(0, children),
         mealPlanId: mealPlanId || undefined,
+        roomKeys: roomsMode ? roomKeys : undefined,
         addOns: addOnList,
       }
     : null;
@@ -109,7 +122,7 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
   }
 
   if (!property) return null;
-  const waText = `Radhe Radhe! I'd like to book ${pkg ? `${pkg.title} at ` : ""}${property.name}${checkIn ? ` from ${checkIn}` : ""}${effectiveCheckOut && checkIn ? ` to ${effectiveCheckOut}` : ""} for ${adults + children} guests.`;
+  const waText = `Radhe Radhe! I'd like to book ${pkg ? `${pkg.title} at ` : ""}${property.name}${checkIn ? ` from ${checkIn}` : ""}${effectiveCheckOut && checkIn ? ` to ${effectiveCheckOut}` : ""} ${roomsMode && selectedRooms.length ? ` (rooms: ${selectedRooms.map((r) => r.name).join(", ")})` : ""} for ${adults + children} guests.`;
 
   return (
     <div className={cn("border hairline bg-paper p-6 md:p-7", className)}>
@@ -118,7 +131,9 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
           <p className="display text-2xl text-ink">{pkg.nights} nights</p>
         ) : (
           <p>
-            <span className="display text-3xl text-ink">{property.baseRate ? formatINR(property.baseRate) : "—"}</span>
+            <span className="display text-3xl text-ink">
+              {roomsMode ? (selectedRooms.length ? formatINR(selectedRooms.reduce((t, r) => t + r.baseRate, 0)) : `from ${formatINR(Math.min(...roomsOffered.map((r) => r.baseRate)))}`) : property.baseRate ? formatINR(property.baseRate) : "—"}
+            </span>
             <span className="text-sm text-muted"> / night</span>
           </p>
         )}
@@ -127,6 +142,44 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
 
       {property.status !== "active" ? (
         <p className="mb-5 bg-linen p-4 text-sm text-umber">This home is temporarily unavailable for booking. Message us on WhatsApp for alternatives.</p>
+      ) : null}
+
+      {roomsOffered.length ? (
+        <div className="mb-5">
+          <div className="grid grid-cols-2 rounded-full border border-black/[0.08] bg-white p-1 text-sm font-semibold" role="tablist" aria-label="What would you like to book?">
+            {(
+              [
+                ["entire", "Entire home"],
+                ["rooms", "Choose rooms"],
+              ] as const
+            ).map(([k, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => setMode(k)} className={cn("rounded-full py-2 transition-colors", mode === k ? "bg-ink text-white" : "text-charcoal hover:bg-black/5")}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {roomsMode ? (
+            <fieldset className="mt-4 space-y-2">
+              <legend className="field-label mb-2">Select one or more rooms</legend>
+              {roomsOffered.map((r) => {
+                const on = roomKeys.includes(r.key);
+                return (
+                  <label key={r.key} className={cn("flex cursor-pointer items-start gap-3 rounded-2xl border p-3 text-sm transition-colors", on ? "border-ink bg-white" : "border-black/[0.08] hover:border-black/20")}>
+                    <input type="checkbox" checked={on} onChange={() => toggleRoom(r.key)} className="mt-1 accent-charcoal" />
+                    <span className="flex-1">
+                      <span className="flex justify-between gap-3">
+                        <span className="font-semibold text-ink">{r.name}</span>
+                        <span className="tabular-nums text-ink">{formatINR(r.baseRate)}<span className="text-muted"> /night</span></span>
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted">{[r.bedType, `up to ${r.maxGuests} guests`, r.bathroom === "shared" ? "shared bathroom" : "attached bathroom"].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </label>
+                );
+              })}
+              <p className="text-xs text-muted">Booking the entire home gives your group every room. Individual rooms may share the home with other guests.</p>
+            </fieldset>
+          ) : null}
+        </div>
       ) : null}
 
       {properties.length > 1 ? (
@@ -174,11 +227,15 @@ export function StayBookingWidget({ properties, mealPlans, addOns, whatsapp, max
       {conflict.length ? <p className="mt-3 text-sm text-danger">Some nights in this range are booked ({conflict.slice(0, 3).join(", ")}{conflict.length > 3 ? "…" : ""}). Please try other dates.</p> : null}
 
       <div className="mt-4 divide-y hairline border-y">
-        <Counter label="Adults" value={adults} min={1} max={property.occupancy.maxAdults || property.occupancy.maxGuests} onChange={setAdults} />
-        <Counter label="Children" hint="Under 18" value={children} min={0} max={Math.max(0, Math.min(property.occupancy.maxChildren, property.occupancy.maxGuests - adults))} onChange={setChildren} />
+        <Counter label="Adults" value={adults} min={1} max={capacity.maxAdults || capacity.maxGuests} onChange={setAdults} />
+        <Counter label="Children" hint="Under 18" value={children} min={0} max={Math.max(0, Math.min(capacity.maxChildren, capacity.maxGuests - adults))} onChange={setChildren} />
         <ChildAges count={children} ages={childAges} onChange={setChildAges} />
       </div>
-      <p className="mt-2 text-xs text-muted">Up to {property.occupancy.maxGuests} guests{property.stayRules.minNights > 1 ? ` · minimum ${property.stayRules.minNights} nights` : ""}</p>
+      <p className={cn("mt-2 text-xs", adults + children > capacity.maxGuests ? "text-danger" : "text-muted")}>
+        {roomsMode && !roomKeys.length ? "Select at least one room · " : ""}Up to {capacity.maxGuests} guests{roomsMode && roomKeys.length ? " in the selected rooms" : ""}
+        {property.stayRules.minNights > 1 ? ` · minimum ${property.stayRules.minNights} nights` : ""}
+        {adults + children > capacity.maxGuests ? " — add a room or reduce guests" : ""}
+      </p>
 
       {mealPlans.length ? (
         <fieldset className="mt-6">

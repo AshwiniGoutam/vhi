@@ -184,7 +184,7 @@ export async function enqueueCancellationNotifications(bookingId: string, refund
   await Notification.insertMany(docs);
 }
 
-export async function enqueueEnquiryNotification(e: { name: string; phone: string; subject?: string; travelDate?: string; people?: number; message?: string }) {
+export async function enqueueEnquiryNotification(e: { name: string; phone: string; email?: string; subject?: string; travelDate?: string; people?: number; message?: string }) {
   await connectDB();
   const s = await getSettings();
   const text = `New enquiry: ${e.subject ?? "General"}\n${e.name} · ${e.phone}${e.travelDate ? `\nDate: ${e.travelDate}` : ""}${e.people ? ` · ${e.people} people` : ""}${e.message ? `\n${e.message}` : ""}`;
@@ -199,6 +199,30 @@ export async function enqueueEnquiryNotification(e: { name: string; phone: strin
       body: text,
     })),
     ...(s.notifications.adminEmails ?? []).map((to) => ({ channel: "email", audience: "admin", event: "admin_enquiry", to, subject: `New enquiry · ${e.subject ?? "General"} · ${e.name}`, body: text, html: emailLayout({ heading: "New enquiry", intro: text }) })),
+    // Acknowledgement to the guest, so they know we received it
+    ...(e.email && s.notifications.sendGuestEmail
+      ? [
+          {
+            channel: "email",
+            audience: "guest",
+            event: "guest_enquiry_received",
+            to: e.email,
+            subject: `We’ve received your enquiry · ${e.subject ?? "VHI Vrindavan"}`,
+            body: `Radhe Radhe ${e.name}, thank you for writing to VHI. Our team will reach you on WhatsApp or phone shortly.`,
+            html: emailLayout({
+              preheader: "We’ll be in touch shortly",
+              heading: "Thank you — we’ll be in touch",
+              intro: `Radhe Radhe ${e.name}. Thank you for your enquiry about ${e.subject ?? "staying with VHI"}. A member of our Vrindavan team will reach you on WhatsApp or phone shortly${s.business.phone ? ` — or call us any time on ${s.business.phone}` : ""}.`,
+              rows: [
+                ["About", e.subject ?? "General enquiry"],
+                ...(e.travelDate ? ([["Travel date", e.travelDate]] as [string, string][]) : []),
+                ...(e.people ? ([["People", String(e.people)]] as [string, string][]) : []),
+              ],
+              footerNote: "You’re receiving this because you sent an enquiry on our website.",
+            }),
+          },
+        ]
+      : []),
   ];
   if (docs.length) await Notification.insertMany(docs);
 }

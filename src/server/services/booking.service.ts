@@ -14,6 +14,7 @@ import { AppError } from "@/server/errors";
 import type { AdminUser } from "@/server/auth/session";
 import { audit } from "@/server/audit";
 import { quoteStayRequest, quoteTourRequest, type StayQuoteRequest, type TourQuoteRequest } from "./quote.service";
+import { ENTIRE_UNIT, unitsFor } from "@/lib/rooms";
 import { isStayAvailable, channelRef } from "./availability.service";
 import { calculateRefund } from "./cancellation";
 import { dispatchOutbox, enqueueBookingNotifications, enqueueCancellationNotifications, enqueueUrgentAdminAlert } from "./notification.service";
@@ -71,12 +72,31 @@ function isDuplicateKey(e: unknown) {
 
 /* ─────────────── Locks & capacity ─────────────── */
 
-async function takePropertyHold(propertyId: string, nights: ISODate[], bookingId: unknown, expiresAt: Date | null, session?: ClientSession) {
+let lockIndexReady: Promise<void> | undefined;
+/**
+ * One-time upgrade: holds used to be unique per (property, night). Room booking needs (property, night, unit),
+ * so the old index is dropped automatically the first time a hold is taken.
+ */
+function ensureLockIndexes() {
+  lockIndexReady ??= (async () => {
+    await InventoryLock.collection.dropIndex("propertyId_1_night_1").catch(() => undefined);
+    await InventoryLock.createIndexes().catch((e: Error) => console.warn("[locks] index", e.message));
+  })();
+  return lockIndexReady;
+}
+
+async function takePropertyHold(propertyId: string, nights: ISODate[], bookingId: unknown, expiresAt: Date | null, session?: ClientSession, units: string[] = [ENTIRE_UNIT]) {
+  await ensureLockIndexes();
   // Clear holds that expired but haven't been swept by the TTL monitor yet.
   await InventoryLock.deleteMany({ propertyId, night: { $in: nights }, type: "hold", expiresAt: { $lt: new Date() } }, { session });
+  // A legacy whole-property lock blocks every room.
+  if (!units.includes(ENTIRE_UNIT)) {
+    const legacy = await InventoryLock.exists({ propertyId, night: { $in: nights }, $or: [{ unit: ENTIRE_UNIT }, { unit: { $exists: false } }] }).session(session ?? null);
+    if (legacy) throw new AppError("NOT_AVAILABLE", "Those dates were just taken. Please choose different dates.", 409);
+  }
   try {
     await InventoryLock.insertMany(
-      nights.map((night) => ({ propertyId, night, type: expiresAt ? "hold" : "booked", bookingId, expiresAt: expiresAt ?? undefined })),
+      nights.flatMap((night) => units.map((unit) => ({ propertyId, night, unit, type: expiresAt ? "hold" : "booked", bookingId, expiresAt: expiresAt ?? undefined }))),
       { session, ordered: true },
     );
   } catch (e) {
@@ -143,10 +163,11 @@ async function openPayment(booking: Doc, description: string): Promise<CheckoutS
 }
 
 export async function createStayBooking(input: { request: StayQuoteRequest; guest: GuestInput; specialRequests?: string; attribution?: Attribution }): Promise<CheckoutSession> {
-  const { quote, discountKind, property, pkg, meal, settings } = await quoteStayRequest({ ...input.request, phone: input.guest.phone });
+  const { quote, discountKind, property, pkg, meal, settings, rooms } = await quoteStayRequest({ ...input.request, phone: input.guest.phone });
   const { request } = input;
+  const roomKeys = rooms.map((r) => r.key);
 
-  const check = await isStayAvailable(property, request.checkIn, request.checkOut, { live: true });
+  const check = await isStayAvailable(property, request.checkIn, request.checkOut, { live: true, roomKeys });
   if (!check.available) throw new AppError("NOT_AVAILABLE", "Sorry, some of those nights are no longer available.", 409, { blockedNights: check.blockedNights });
 
   const holdExpiresAt = new Date(Date.now() + settings.booking.holdMinutes * 60_000);
@@ -164,7 +185,9 @@ export async function createStayBooking(input: { request: StayQuoteRequest; gues
               kind: "property",
               propertyId: property._id,
               packageId: pkg?._id,
-              title: pkg ? `${pkg.title} · ${property.name}` : property.name,
+              title: pkg ? `${pkg.title} · ${property.name}` : rooms.length ? `${property.name} · ${rooms.map((r) => r.name).join(", ")}` : property.name,
+              roomKeys,
+              roomNames: rooms.map((r) => r.name),
               checkIn: request.checkIn,
               checkOut: request.checkOut,
               nights: nights.length,
@@ -185,7 +208,7 @@ export async function createStayBooking(input: { request: StayQuoteRequest; gues
       ],
       { session },
     );
-    await takePropertyHold(property._id, nights, created._id, holdExpiresAt, session);
+    await takePropertyHold(property._id, nights, created._id, holdExpiresAt, session, unitsFor(property, roomKeys));
     await reserveCoupon(quote, discountKind, created._id, input.guest.phone, session);
     return created.toObject();
   });
@@ -202,12 +225,14 @@ export async function createTourBooking(input: { request: TourQuoteRequest; gues
 
   // Auto-allocate a VHI property for the tour's nights, if configured.
   let stayPropertyId: string | undefined;
+  let stayProperty: Doc | undefined;
   if (tour.stayAllocation === "auto" && tour.stayPropertyIds?.length && (tour.nights ?? 0) > 0) {
     const checkOut = addDays(request.travelDate, tour.nights!);
     for (const pid of tour.stayPropertyIds) {
       const p = await Property.findById(pid).lean<Doc>();
       if (p && (await isStayAvailable(p, request.travelDate, checkOut, { live: true })).available) {
         stayPropertyId = pid;
+        stayProperty = p;
         break;
       }
     }
@@ -248,7 +273,7 @@ export async function createTourBooking(input: { request: TourQuoteRequest; gues
       ],
       { session },
     );
-    if (stayPropertyId) await takePropertyHold(stayPropertyId, nightsBetween(request.travelDate, addDays(request.travelDate, tour.nights!)), created._id, holdExpiresAt, session);
+    if (stayPropertyId) await takePropertyHold(stayPropertyId, nightsBetween(request.travelDate, addDays(request.travelDate, tour.nights!)), created._id, holdExpiresAt, session, unitsFor(stayProperty ?? {}));
     await reserveCoupon(quote, discountKind, created._id, input.guest.phone, session);
     return created.toObject();
   });
@@ -272,9 +297,10 @@ async function reacquire(booking: Doc, session: ClientSession) {
   for (const item of booking.items ?? []) {
     if (item.kind === "property" && item.checkIn && item.checkOut) {
       const p = await Property.findById(item.propertyId).lean<Doc>();
-      const ok = p && (await isStayAvailable(p, item.checkIn, item.checkOut, { live: true })).available;
+      const roomKeys: string[] = item.roomKeys ?? [];
+      const ok = p && (await isStayAvailable(p, item.checkIn, item.checkOut, { live: true, roomKeys })).available;
       if (!ok) throw new AppError("NOT_AVAILABLE", "Inventory no longer available", 409);
-      await takePropertyHold(String(item.propertyId), nightsBetween(item.checkIn, item.checkOut), booking._id, null, session);
+      await takePropertyHold(String(item.propertyId), nightsBetween(item.checkIn, item.checkOut), booking._id, null, session, unitsFor(p, roomKeys));
     }
     if (item.kind === "tour" && item.departureId) {
       const dep = await TourDeparture.findById(item.departureId).session(session).lean<Doc>();
@@ -402,9 +428,7 @@ export async function retryPayment(code: string): Promise<CheckoutSession> {
   const holdExpiresAt = new Date(Date.now() + settings.booking.holdMinutes * 60_000);
   await InventoryLock.updateMany({ bookingId: booking._id, type: "hold" }, { expiresAt: holdExpiresAt });
   const locks = await InventoryLock.countDocuments({ bookingId: booking._id });
-  const expectedLocks = (booking.items ?? [])
-    .filter((i: Doc) => i.kind === "property")
-    .reduce((s: number, i: Doc) => s + (i.nights ?? 0), 0);
+  const expectedLocks = (booking.items ?? []).filter((i: Doc) => i.kind === "property").length ? 1 : 0;
   if (locks < expectedLocks) throw new AppError("EXPIRED", "Your hold expired and the dates are no longer reserved. Please start again.", 410);
   await Booking.updateOne({ _id: booking._id }, { holdExpiresAt, paymentStatus: "pending" });
   return openPayment({ ...booking, holdExpiresAt }, booking.items?.[0]?.title ?? "VHI booking");

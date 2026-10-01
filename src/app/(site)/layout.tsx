@@ -2,11 +2,13 @@ import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { ContactFab } from "@/components/site/contact-fab";
 import { getSettings } from "@/server/services/settings.service";
+import { getPopupOffer } from "@/server/services/catalog.service";
+import { OfferPopup } from "@/components/site/offer-popup";
 
 export const dynamic = "force-dynamic";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSettings();
+  const [settings, offer] = await Promise.all([getSettings(), getPopupOffer()]);
   return (
     <>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:bg-ivory focus:p-3">
@@ -16,6 +18,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <main id="main">{children}</main>
       <Footer settings={settings} />
       <ContactFab phone={settings.business.phone} whatsapp={settings.business.whatsapp} />
+      {offer ? <OfferPopup offer={offer} /> : null}
     </>
   );
 }

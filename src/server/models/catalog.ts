@@ -33,6 +33,23 @@ const PropertySchema = new Schema(
     },
     extraGuest: { enabled: { type: Boolean, default: false }, adultPerNight: { ...paise, default: 0 }, childPerNight: { ...paise, default: 0 } },
     amenityIds: [{ type: ObjectId, ref: "Amenity" }],
+    /** Book the whole villa or individual rooms (Airbnb-style linked availability) */
+    roomBooking: { enabled: { type: Boolean, default: false } },
+    rooms: [
+      {
+        _id: false,
+        key: String, // stable id; generated from the name if empty
+        name: String,
+        description: String,
+        bedType: String,
+        bathroom: { type: String, enum: ["attached", "shared"], default: "attached" },
+        maxGuests: { type: Number, default: 2 },
+        baseRate: { ...paise, default: 0 },
+        weekendRate: paise,
+        image: MediaRefSchema,
+        active: { type: Boolean, default: true },
+      },
+    ],
     houseRules: [String],
     checkInTime: { type: String, default: "14:00" },
     checkOutTime: { type: String, default: "10:00" },
@@ -102,6 +119,7 @@ export const ManualBlock = defineModel(
   new Schema(
     {
       propertyId: { type: ObjectId, ref: "Property", required: true, index: true },
+      roomKey: String, // optional: block one room of a room-enabled villa
       from: { ...isoDate, required: true },
       to: { ...isoDate, required: true },
       reason: { type: String, enum: ["ota", "owner", "maintenance", "other"], default: "other" },

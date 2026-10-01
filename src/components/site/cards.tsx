@@ -1,50 +1,84 @@
 import Link from "next/link";
-import { ArrowUpRight, BedDouble, Users, Bath, CalendarDays, Moon } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Moon } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import type { PackageDTO, PropertyDTO, TourDTO } from "@/server/types";
 import { Photo } from "./photo";
+import { Icon } from "./icon";
 
 export const TYPE_LABEL: Record<string, string> = { studio: "Studio", "1bhk": "1 BHK", "2bhk": "2 BHK", "3bhk": "3 BHK", "4bhk": "4 BHK", villa: "Villa" };
 
-/** Stay card: square photo with chips, clean text block, clear nightly price. */
+/** Stay card: tags on the photo, highlighted amenities, starting price and a clear "Explore" button. */
 export function PropertyCard({ p, priority }: { p: PropertyDTO; priority?: boolean }) {
   const onSale = p.pricing.compareAtRate && p.pricing.compareAtRate > p.pricing.baseRate;
+  const rooms = (p.roomBooking?.enabled ? p.rooms ?? [] : []).filter((r) => r.active !== false && r.baseRate > 0);
+  const roomFrom = rooms.length ? Math.min(...rooms.map((r) => r.baseRate)) : 0;
+  const amenities = p.amenities ?? [];
+  const shown = amenities.slice(0, 4);
+  const more = amenities.length - shown.length;
+  const tags = [TYPE_LABEL[p.type] ?? p.type, ...(p.collections ?? []).slice(0, 2)];
   return (
-    <Link href={`/stays/${p.slug}`} className="group block">
-      <div className="relative overflow-hidden rounded-2xl">
-        <Photo media={p.featuredImage ?? p.gallery?.[0]} alt={p.featuredImage?.alt || p.name} className="aspect-square !rounded-none" imgClassName="transition-transform duration-700 ease-out group-hover:scale-[1.05]" sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" priority={priority} crop="ar_1:1" label={p.name} />
+    <article className="group flex h-full flex-col rounded-3xl border border-black/[0.06] bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_18px_40px_-24px_rgba(0,0,0,0.25)] transition-shadow duration-500 hover:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_28px_60px_-24px_rgba(0,0,0,0.35)]">
+      <Link href={`/stays/${p.slug}`} className="relative block overflow-hidden rounded-2xl" tabIndex={-1} aria-hidden>
+        <Photo media={p.featuredImage ?? p.gallery?.[0]} alt={p.featuredImage?.alt || p.name} className="aspect-[4/3] !rounded-none" imgClassName="transition-transform duration-700 ease-out group-hover:scale-[1.05]" sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" priority={priority} crop="ar_4:3" label={p.name} />
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          <span className="chip">{TYPE_LABEL[p.type] ?? p.type}</span>
-          {p.label ? <span className="chip !bg-ink/85 !text-white">{p.label}</span> : null}
-          {onSale ? <span className="chip !bg-brass !text-white">Offer</span> : null}
+          {tags.map((t) => (
+            <span key={t} className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-brass shadow-sm">{t}</span>
+          ))}
+          {p.label ? <span className="rounded-full bg-ink/85 px-3 py-1 text-xs font-semibold text-white">{p.label}</span> : null}
+          {onSale ? <span className="rounded-full bg-brass px-3 py-1 text-xs font-semibold text-white">Offer</span> : null}
         </div>
-        {p.status === "maintenance" ? <span className="chip absolute bottom-3 left-3">Temporarily unavailable</span> : null}
-      </div>
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-[1.08rem] font-semibold tracking-tight text-ink">{p.name}</h3>
+        {rooms.length ? <span className="absolute bottom-3 left-3 rounded-full bg-ink/85 px-3 py-1 text-xs font-semibold text-white backdrop-blur">Entire home or by room</span> : null}
+        {p.status === "maintenance" ? <span className="chip absolute bottom-3 right-3">Temporarily unavailable</span> : null}
+      </Link>
+
+      <div className="flex flex-1 flex-col px-2 pb-2 pt-4">
+        <Link href={`/stays/${p.slug}`} className="block">
+          <h3 className="text-lg font-semibold tracking-tight text-ink">{p.name}</h3>
           <p className="mt-0.5 text-sm text-muted">
             {p.location?.area && p.location.area !== (p.location?.city ?? "Vrindavan") ? `${p.location.area}, ` : ""}
-            {p.location?.city ?? "Vrindavan"}
+            {p.location?.city ?? "Vrindavan"} · {p.bedrooms} bed · {p.bathrooms} bath · up to {p.occupancy.maxGuests} guests
           </p>
+        </Link>
+
+        {shown.length ? (
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Amenities">
+            {shown.map((a) => (
+              <li key={a._id} className="inline-flex items-center gap-1.5 rounded-lg border border-brass/15 bg-brass/[0.07] px-2.5 py-1.5 text-[0.8rem] font-medium text-ink">
+                <Icon name={a.icon} className="h-3.5 w-3.5 text-brass" strokeWidth={1.8} />
+                {a.name}
+              </li>
+            ))}
+            {more > 0 ? (
+              <li>
+                <Link href={`/stays/${p.slug}#amenities`} className="inline-flex items-center rounded-lg border border-brass/25 px-2.5 py-1.5 text-[0.8rem] font-semibold text-brass hover:bg-brass/[0.07]">
+                  +{more} more
+                </Link>
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
+
+        <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+          <div>
+            {p.pricing.baseRate > 0 || roomFrom > 0 ? (
+              <>
+                <p className="text-xs text-muted">{roomFrom && (!p.pricing.baseRate || roomFrom < p.pricing.baseRate) ? "Rooms from" : "Starting from"}</p>
+                <p className="mt-0.5 whitespace-nowrap">
+                  {onSale && !roomFrom ? <s className="mr-1.5 text-sm text-muted">{formatINR(p.pricing.compareAtRate!)}</s> : null}
+                  <span className="text-xl font-bold text-ink">{formatINR(roomFrom && (!p.pricing.baseRate || roomFrom < p.pricing.baseRate) ? roomFrom : p.pricing.baseRate)}</span>
+                  <span className="text-sm text-muted"> /night</span>
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted">Price on request</p>
+            )}
+          </div>
+          <Link href={`/stays/${p.slug}`} className="btn btn-primary !px-5 !py-3 text-sm">
+            Explore property <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
+          </Link>
         </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 text-ink transition-colors duration-300 group-hover:border-ink group-hover:bg-ink group-hover:text-white">
-          <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
-        </span>
       </div>
-      <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted">
-        <span className="inline-flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5" strokeWidth={1.6} />{p.bedrooms} bed</span>
-        <span className="inline-flex items-center gap-1.5"><Bath className="h-3.5 w-3.5" strokeWidth={1.6} />{p.bathrooms} bath</span>
-        <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" strokeWidth={1.6} />{p.occupancy.maxGuests} guests</span>
-      </p>
-      {p.pricing.baseRate > 0 ? (
-        <p className="mt-3 text-[0.95rem]">
-          {onSale ? <s className="mr-1.5 text-sm text-muted">{formatINR(p.pricing.compareAtRate!)}</s> : null}
-          <span className="font-semibold text-ink">{formatINR(p.pricing.baseRate)}</span>
-          <span className="text-sm text-muted"> / night</span>
-        </p>
-      ) : null}
-    </Link>
+    </article>
   );
 }
 

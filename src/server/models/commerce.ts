@@ -12,13 +12,15 @@ const InventoryLockSchema = new Schema(
   {
     propertyId: { type: ObjectId, ref: "Property", required: true },
     night: { ...isoDate, required: true },
+    /** "entire" for whole-property listings, "room:<key>" for room-enabled villas (see lib/rooms.ts) */
+    unit: { type: String, default: "entire" },
     type: { type: String, enum: ["hold", "booked"], required: true },
     bookingId: { type: ObjectId, ref: "Booking", required: true, index: true },
     expiresAt: Date,
   },
   { timestamps: true },
 );
-InventoryLockSchema.index({ propertyId: 1, night: 1 }, { unique: true });
+InventoryLockSchema.index({ propertyId: 1, night: 1, unit: 1 }, { unique: true, name: "propertyId_1_night_1_unit_1" });
 InventoryLockSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 export const InventoryLock = defineModel("InventoryLock", InventoryLockSchema);
 
@@ -80,6 +82,14 @@ export const Coupon = defineModel(
       usageLimit: Number,
       perCustomerLimit: { type: Number, default: 1 },
       usedCount: { type: Number, default: 0 },
+      /** Website pop-up (shown 5 s after a visitor arrives) */
+      popup: {
+        enabled: { type: Boolean, default: false },
+        title: String,
+        text: String,
+        ctaLabel: String,
+        finePrint: String,
+      },
     },
     { timestamps: true },
   ),
@@ -140,6 +150,9 @@ export const BookingItemSchema = new Schema({
   childAges: [Number],
   mealPlanId: { type: ObjectId, ref: "MealPlan" },
   mealPlanName: String,
+  /** Individual rooms booked in a villa; empty = the entire property */
+  roomKeys: [String],
+  roomNames: [String],
   channel: {
     externalReservationId: String,
     syncStatus: { type: String, enum: ["pending", "synced", "failed", "not_required"], default: "not_required" },

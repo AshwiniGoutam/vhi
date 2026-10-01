@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BedDouble, Bath, Users, Clock, MapPin, Home } from "lucide-react";
 import { Gallery } from "@/components/site/gallery";
+import { Photo } from "@/components/site/photo";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { Icon } from "@/components/site/icon";
 import { FaqList } from "@/components/site/faq-list";
@@ -10,6 +11,7 @@ import { PropertyCard, TYPE_LABEL } from "@/components/site/cards";
 import { ViewTracker } from "@/components/site/view-tracker";
 import { StayBookingWidget } from "@/components/booking/stay-booking-widget";
 import { getPropertyBySlug } from "@/server/services/catalog.service";
+import { bookableRooms, roomKeyOf } from "@/lib/rooms";
 import type { AmenityDTO } from "@/server/types";
 import { getSettings } from "@/server/services/settings.service";
 import { buildMetadata } from "@/lib/seo";
@@ -31,6 +33,7 @@ export default async function StayPage({ params }: Props) {
   const [data, settings] = await Promise.all([getPropertyBySlug(slug), getSettings()]);
   if (!data) notFound();
   const { property: p, mealPlans, addOns, policy, testimonials, similar } = data;
+  const bookable = bookableRooms(p);
   // Cover first; the rest in admin order. The cover keeps its room tag from the gallery if it appears there.
   const gallery = p.gallery ?? [];
   const cover = p.featuredImage ? { ...p.featuredImage, group: p.featuredImage.group ?? gallery.find((g) => g.url === p.featuredImage?.url)?.group } : null;
@@ -107,6 +110,26 @@ export default async function StayPage({ params }: Props) {
             ) : null}
           </section>
 
+          {bookable.length ? (
+            <section id="rooms" className="scroll-mt-28">
+              <p className="eyebrow mb-3">Book the whole home or by room</p>
+              <p className="mb-6 max-w-xl text-muted">Take the entire {TYPE_LABEL[p.type] ?? "home"} for your group, or book just the rooms you need. Other rooms may be shared with other guests on the same dates.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {bookable.map((r) => (
+                  <div key={roomKeyOf(r)} className="flex gap-4 rounded-2xl border border-black/[0.06] bg-white p-3">
+                    <Photo media={r.image} alt={r.name} className="aspect-square w-28 shrink-0" sizes="112px" label="Room" />
+                    <div className="min-w-0 py-1">
+                      <p className="font-semibold text-ink">{r.name}</p>
+                      <p className="mt-0.5 text-sm text-muted">{[r.bedType, `${r.maxGuests || 2} guests`, r.bathroom === "shared" ? "Shared bathroom" : "Attached bathroom"].filter(Boolean).join(" · ")}</p>
+                      {r.description ? <p className="mt-1.5 line-clamp-2 text-sm text-muted">{r.description}</p> : null}
+                      {r.baseRate ? <p className="mt-2 text-sm"><span className="font-bold text-ink">{formatINR(r.baseRate)}</span><span className="text-muted"> /night</span></p> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {p.beds?.length ? (
             <section>
               <p className="eyebrow mb-5">Where you&apos;ll sleep</p>
@@ -123,7 +146,7 @@ export default async function StayPage({ params }: Props) {
           ) : null}
 
           {p.amenities?.length ? (
-            <section>
+            <section id="amenities" className="scroll-mt-28">
               <p className="eyebrow mb-5">Amenities</p>
               <div className="space-y-8">
                 {Object.entries(amenityGroups).map(([group, list]) => (
@@ -212,7 +235,18 @@ export default async function StayPage({ params }: Props) {
         <aside className="lg:col-span-5">
           <div className="lg:sticky lg:top-28" id="book">
             <StayBookingWidget
-              properties={[{ _id: p._id, slug: p.slug, name: p.name, status: p.status, occupancy: p.occupancy, stayRules: p.stayRules, baseRate: p.pricing.baseRate }]}
+              properties={[
+                {
+                  _id: p._id,
+                  slug: p.slug,
+                  name: p.name,
+                  status: p.status,
+                  occupancy: p.occupancy,
+                  stayRules: p.stayRules,
+                  baseRate: p.pricing.baseRate,
+                  rooms: bookable.map((r) => ({ key: roomKeyOf(r), name: r.name, bedType: r.bedType, maxGuests: r.maxGuests || 2, baseRate: r.baseRate, bathroom: r.bathroom })),
+                },
+              ]}
               mealPlans={mealPlans}
               addOns={addOns}
               whatsapp={settings.business.whatsapp}

@@ -37,9 +37,15 @@ const schema = z.object({
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   WHATSAPP_APP_SECRET: z.string().optional(),
 
-  EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
+  EMAIL_PROVIDER: z.enum(["console", "resend", "smtp"]).default("console"),
   EMAIL_FROM: z.string().default("VHI Luxury Homestays <bookings@example.com>"),
   EMAIL_API_KEY: z.string().optional(),
+  EMAIL_REPLY_TO: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().default(465),
+  SMTP_SECURE: z.enum(["true", "false"]).optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
 
   META_ACCESS_TOKEN: z.string().optional(),
   NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),

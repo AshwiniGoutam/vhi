@@ -6,6 +6,6 @@ export interface EmailMessage {
   replyTo?: string;
 }
 export interface EmailProvider {
-  readonly name: "console" | "resend";
+  readonly name: "console" | "resend" | "smtp";
   send(m: EmailMessage): Promise<{ id: string }>;
 }

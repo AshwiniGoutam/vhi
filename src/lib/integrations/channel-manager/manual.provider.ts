@@ -16,7 +16,8 @@ export class ManualChannelManager implements ChannelManagerProvider {
     const ids = refs.map((r) => r.propertyId);
     const nights = nightsBetween(from, addDays(to, 1));
     const [blocks, bookings] = await Promise.all([
-      ManualBlock.find({ propertyId: { $in: ids }, from: { $lte: to }, to: { $gte: from } }).lean(),
+      // whole-property blocks only; single-room blocks are applied per room in availability.service
+      ManualBlock.find({ propertyId: { $in: ids }, from: { $lte: to }, to: { $gte: from }, roomKey: { $in: [null, ""] } }).lean(),
       Booking.find(
         { status: { $in: ["confirmed", "checked_in"] }, "items.propertyId": { $in: ids } },
         { items: 1 },
@@ -32,6 +33,8 @@ export class ManualChannelManager implements ChannelManagerProvider {
       for (const item of bk.items ?? []) {
         const pid = String(item.propertyId);
         if (!map[pid] || !item.checkIn || !item.checkOut) continue;
+        // single-room bookings don't close the whole property here; their room locks handle it
+        if (item.roomKeys?.length) continue;
         for (const n of nightsBetween(item.checkIn, item.checkOut)) if (map[pid][n]) map[pid][n] = { available: false, units: 0 };
       }
     return map;

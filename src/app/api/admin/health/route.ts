@@ -13,7 +13,7 @@ export const GET = withAdmin("settings.manage", async () => {
     channelManager: { provider: channelManager().name, ...cm },
     cloudinary: { configured: isCloudinaryConfigured() },
     whatsapp: { provider: e.WHATSAPP_PROVIDER },
-    email: { provider: e.EMAIL_PROVIDER, from: e.EMAIL_FROM },
+    email: { provider: e.EMAIL_PROVIDER, from: e.EMAIL_FROM, smtpHost: e.EMAIL_PROVIDER === "smtp" ? e.SMTP_HOST : undefined },
     analytics: { ga4: Boolean(process.env.NEXT_PUBLIC_GA_ID), metaPixel: Boolean(e.NEXT_PUBLIC_META_PIXEL_ID), metaCapi: Boolean(e.META_ACCESS_TOKEN) },
     cron: { secretSet: Boolean(e.CRON_SECRET) },
   });

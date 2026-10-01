@@ -58,6 +58,19 @@ export function CheckoutClient({ vertical, request, title, subtitle, backHref, p
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [phase]);
 
+  // A code claimed from the website offer pop-up is applied automatically.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("vhi_coupon");
+      if (saved) {
+        setCoupon(saved);
+        setAppliedCoupon(saved);
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
   function validateDetails() {

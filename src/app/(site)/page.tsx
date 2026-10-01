@@ -92,7 +92,7 @@ export default async function HomePage() {
       />
 
       {/* ── Trust strip ── */}
-      <section className="border-b border-black/5">
+      {/* <section className="border-b border-black/5">
         <div className="container-x grid grid-cols-2 gap-y-6 py-8 md:grid-cols-4 md:py-10">
           {[
             { icon: KeyRound, title: "Private homes", body: "Whole apartments & villas" },
@@ -111,63 +111,10 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-      </section>
-
-      {/* ── Three ways to stay (bento) ── */}
-      <section className="section">
-        <div className="container-x">
-          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <SectionHeading eyebrow="Ways to experience Vrindavan" title="Choose how you’d" accent="like to arrive." />
-            <p className="max-w-sm text-muted">Stay on your own terms, add home-cooked sattvik meals, or let us plan your whole yatra.</p>
-          </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-3 md:gap-5">
-            {[
-              { n: "01", title: "Stay", body: "Private studios, apartments and a four-bedroom villa for couples, families and satsang groups.", href: "/stays", image: featured[0]?.featuredImage, cta: "Explore stays" },
-              { n: "02", title: "Stay + Sattvik Food", body: "Three, five or seven nights with fresh sattvik breakfast and dinner and a curated itinerary.", href: "/stay-food", image: packages[0]?.heroImage ?? h.foodImage, cta: "See packages" },
-              { n: "03", title: "Darshan Tours", body: "Guided journeys through Vrindavan, Mathura, Govardhan and Barsana — everything included.", href: "/darshan-tours", image: tours[0]?.heroImage, cta: "View journeys" },
-            ].map((o, i) => (
-              <Reveal key={o.n} delay={i * 100}>
-                <Link href={o.href} className="group relative block overflow-hidden rounded-3xl bg-ink text-white">
-                  <Photo media={o.image} alt={o.title} className="aspect-[4/5] !rounded-none" imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.05]" sizes="(min-width:768px) 33vw, 100vw" label={o.title} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
-                  <span className="chip absolute left-5 top-5">{o.n}</span>
-                  <div className="absolute inset-x-0 bottom-0 p-6 md:p-7">
-                    <h3 className="text-2xl font-semibold tracking-tight md:text-[1.7rem]">{o.title}</h3>
-                    <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/75">{o.body}</p>
-                    <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink transition-transform duration-300 group-hover:translate-x-1">
-                      {o.cta} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-                    </span>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Featured stays ── */}
-      {featured.length ? (
-        <section className="section bg-paper">
-          <div className="container-x">
-            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-              <SectionHeading eyebrow="Featured stays" title="Homes with a" accent="sense of place." />
-              <Link href="/stays" className="btn btn-outline self-start md:self-auto">
-                View all stays <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
-              </Link>
-            </div>
-            <div className="mt-12 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-              {featured.slice(0, 6).map((p, i) => (
-                <Reveal key={p._id} delay={(i % 3) * 90}>
-                  <PropertyCard p={p} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+      </section> */}
 
       {/* ── The experience ── */}
-      <section className="section">
+      {/* <section className="section">
         <div className="container-x grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <Reveal className="relative">
             <Photo media={h.introImage} alt="Vrindavan" className="aspect-square" sizes="(min-width:1024px) 45vw, 100vw" label="Vrindavan" />
@@ -194,15 +141,95 @@ export default async function HomePage() {
             </div>
           </Reveal>
         </div>
+      </section> */}
+
+      {/* ── Three ways to stay (bento) ── */}
+      <section className="section">
+        <div className="container-x">
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <SectionHeading eyebrow="Ways to experience Vrindavan" title="Choose how you’d" accent="like to arrive." />
+            <p className="max-w-sm text-muted">Stay on your own terms, add home-cooked sattvik meals, or let us plan your whole yatra. Pick one to see it below.</p>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3 md:gap-5">
+            {[
+              { n: "01", title: "Stay", body: "Private studios, apartments and a four-bedroom villa for couples, families and satsang groups.", href: "#stays", image: featured[0]?.featuredImage, cta: "Explore stays" },
+              { n: "02", title: "Stay + Sattvik Food", body: "Three, five or seven nights with fresh sattvik breakfast and dinner and a curated itinerary.", href: "#stay-food", image: packages[0]?.heroImage ?? h.foodImage, cta: "See packages" },
+              { n: "03", title: "Darshan Tours", body: "Guided journeys through Vrindavan, Mathura, Govardhan and Barsana — everything included.", href: "#darshan", image: tours[0]?.heroImage, cta: "View journeys" },
+            ].map((o, i) => (
+              <Reveal key={o.n} delay={i * 100}>
+                <Link href={o.href} className="group relative block overflow-hidden rounded-3xl bg-ink text-white">
+                  <Photo media={o.image} alt={o.title} className="aspect-[4/5] !rounded-none" imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.05]" sizes="(min-width:768px) 33vw, 100vw" label={o.title} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
+                  <span className="chip absolute left-5 top-5">{o.n}</span>
+                  <div className="absolute inset-x-0 bottom-0 p-6 md:p-7">
+                    <h3 className="text-2xl font-semibold tracking-tight md:text-[1.7rem]">{o.title}</h3>
+                    <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/75">{o.body}</p>
+                    <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink transition-transform duration-300 group-hover:translate-x-1">
+                      {o.cta} <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                    </span>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+         {/* ── Featured stays ── */}
+      {featured.length ? (
+        <section id="stays" className="section scroll-mt-24 bg-paper">
+          <div className="container-x">
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              <SectionHeading eyebrow="01 · Stays" title="Homes with a" accent="sense of place." />
+              <Link href="/stays" className="btn btn-outline self-start md:self-auto">
+                View all stays <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
+              </Link>
+            </div>
+            <div className="mt-12 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+              {featured.slice(0, 6).map((p, i) => (
+                <Reveal key={p._id} delay={(i % 3) * 90}>
+                  <PropertyCard p={p} />
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+     
+      {/* ── Sattvik food ── */}
+      <section id="stay-food" className="section scroll-mt-24">
+        <div className="container-x">
+          <div className="grid items-end gap-10 lg:grid-cols-2 lg:gap-20">
+            <SectionHeading eyebrow="02 · Stay + Sattvik Food" title={h.foodTitle || "Home-cooked meals,"} accent={h.foodTitle ? undefined : "no onion, no garlic."} />
+            <p className="text-[1.05rem] leading-relaxed text-muted">
+              {paragraphs(h.foodBody)[0] ?? "Pure vegetarian, cooked fresh at home — dal, seasonal sabzi, phulkas and kheer. Add breakfast, or breakfast and dinner, to stays of three nights or more."}
+            </p>
+          </div>
+          {packages.length ? (
+            <div className="mt-12 grid gap-5 md:grid-cols-3">
+              {packages.slice(0, 3).map((p, i) => (
+                <Reveal key={p._id} delay={i * 100}>
+                  <PackageCard p={p} />
+                </Reveal>
+              ))}
+            </div>
+          ) : (
+            <Photo media={h.foodImage} alt="Sattvik food" className="mt-12 aspect-[21/9]" label="Sattvik food" />
+          )}
+          <Link href="/stay-food" className="btn btn-outline mt-10">
+            All Stay + Food packages <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
+          </Link>
+        </div>
       </section>
 
       {/* ── Darshan highlight (inset dark panel) ── */}
       {tours.length ? (
-        <section className="px-3 md:px-5">
+        <section id="darshan" className="scroll-mt-24 px-3 md:px-5">
           <div className="mx-auto max-w-[1320px] overflow-hidden rounded-[2rem] bg-ink py-16 text-white md:rounded-[2.5rem] md:py-24">
             <div className="container-x">
               <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
-                <SectionHeading light eyebrow="Darshan Tours" title="Walk the land of Krishna," accent="at the pace of devotion." intro="Unhurried, guided journeys across Braj — a VHI home each night, sattvik meals and a driver who knows every lane." />
+                <SectionHeading light eyebrow="03 · Darshan Tours" title="Walk the land of Krishna," accent="at the pace of devotion." intro="Unhurried, guided journeys across Braj — a VHI home each night, sattvik meals and a driver who knows every lane." />
                 <div className="flex flex-wrap gap-2">
                   {[`Min. ${tours[0].minGroupSize} guests`, `Book ${tours[0].advanceDays}+ days ahead`, "Stay · meals · vehicle"].map((t) => (
                     <span key={t} className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80">{t}</span>
@@ -224,29 +251,6 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      {/* ── Sattvik food ── */}
-      <section className="section">
-        <div className="container-x">
-          <div className="grid items-end gap-10 lg:grid-cols-2 lg:gap-20">
-            <SectionHeading eyebrow="Stay + Sattvik Food" title={h.foodTitle || "Home-cooked meals,"} accent={h.foodTitle ? undefined : "no onion, no garlic."} />
-            <p className="text-[1.05rem] leading-relaxed text-muted">
-              {paragraphs(h.foodBody)[0] ?? "Pure vegetarian, cooked fresh at home — dal, seasonal sabzi, phulkas and kheer. Add breakfast, or breakfast and dinner, to stays of three nights or more."}
-            </p>
-          </div>
-          {packages.length ? (
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {packages.slice(0, 3).map((p, i) => (
-                <Reveal key={p._id} delay={i * 100}>
-                  <PackageCard p={p} />
-                </Reveal>
-              ))}
-            </div>
-          ) : (
-            <Photo media={h.foodImage} alt="Sattvik food" className="mt-12 aspect-[21/9]" label="Sattvik food" />
-          )}
-        </div>
-      </section>
-
       {/* ── Temples & experiences ── */}
       {experiences.length ? (
         <section className="section bg-paper">
@@ -267,6 +271,57 @@ export default async function HomePage() {
                     {e.bestTime ? <p className="mt-3 text-xs font-medium text-sand">Best time · {e.bestTime}</p> : null}
                   </div>
                 </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── Add-on services ── */}
+      {addOns.length ? (
+        <section className="section border-t border-black/5">
+          <div className="container-x grid gap-12 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <SectionHeading eyebrow="Add-on services" title="We’ll handle" accent="the rest." intro="Add these while booking, or ask us on WhatsApp during your stay." />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-8">
+              {addOns.slice(0, 6).map((a) => (
+                <div key={a._id} className="flex gap-4 rounded-3xl border border-black/[0.06] p-6 transition-shadow hover:shadow-[0_18px_40px_-20px_rgba(18,17,16,0.25)]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-paper text-umber">
+                    <Icon name={a.icon} className="h-5 w-5" strokeWidth={1.6} />
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-ink">{a.name}</h3>
+                    {a.description ? <p className="mt-1.5 text-sm leading-relaxed text-muted">{a.description}</p> : null}
+                    <p className="mt-3 text-sm font-semibold text-umber">
+                      {a.pricingUnit === "on_request" || !a.price ? "On request" : `${formatINR(a.price)} ${a.pricingUnit.replace("per_", "/ ").replace("_", " ")}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── Offers ── */}
+      {offers.length ? (
+        <section className="section">
+          <div className="container-x">
+            <SectionHeading eyebrow="Offers" title="A little more" accent="for longer stays." />
+            <div className={cn("mt-12 grid gap-5", offers.length === 2 ? "md:grid-cols-2" : offers.length > 2 ? "md:grid-cols-3" : "")}>
+              {offers.map((o) => (
+                <div key={o._id} className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br from-paper to-linen p-8", offers.length === 1 && "md:flex md:items-end md:justify-between md:gap-10 md:p-12")}>
+                  <div>
+                    {o.badgeText ? <span className="chip !bg-ink !text-white">{o.badgeText}</span> : null}
+                    <h3 className={cn("mt-5 font-semibold tracking-tight text-ink", offers.length === 1 ? "text-3xl md:text-4xl" : "text-2xl")}>{o.title || o.name}</h3>
+                    {o.description ? <p className="mt-3 max-w-xl leading-relaxed text-muted">{o.description}</p> : null}
+                  </div>
+                  <div className={offers.length === 1 ? "mt-8 shrink-0 md:mt-0 md:text-right" : "mt-8"}>
+                    {offers.length === 1 ? <Link href="/stays" className="btn btn-primary">Book now</Link> : null}
+                    <p className={cn("text-xs font-medium text-umber", offers.length === 1 && "mt-3")}>Applied automatically at checkout{o.endsAt ? ` · until ${o.endsAt}` : ""}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -325,60 +380,9 @@ export default async function HomePage() {
       {/* ── Reels ── */}
       {reels.length ? <Reels reels={reels} instagram={settings.business.instagram} /> : null}
 
-      {/* ── Offers ── */}
-      {offers.length ? (
-        <section className="section">
-          <div className="container-x">
-            <SectionHeading eyebrow="Offers" title="A little more" accent="for longer stays." />
-            <div className={cn("mt-12 grid gap-5", offers.length === 2 ? "md:grid-cols-2" : offers.length > 2 ? "md:grid-cols-3" : "")}>
-              {offers.map((o) => (
-                <div key={o._id} className={cn("relative overflow-hidden rounded-3xl bg-gradient-to-br from-paper to-linen p-8", offers.length === 1 && "md:flex md:items-end md:justify-between md:gap-10 md:p-12")}>
-                  <div>
-                    {o.badgeText ? <span className="chip !bg-ink !text-white">{o.badgeText}</span> : null}
-                    <h3 className={cn("mt-5 font-semibold tracking-tight text-ink", offers.length === 1 ? "text-3xl md:text-4xl" : "text-2xl")}>{o.title || o.name}</h3>
-                    {o.description ? <p className="mt-3 max-w-xl leading-relaxed text-muted">{o.description}</p> : null}
-                  </div>
-                  <div className={offers.length === 1 ? "mt-8 shrink-0 md:mt-0 md:text-right" : "mt-8"}>
-                    {offers.length === 1 ? <Link href="/stays" className="btn btn-primary">Book now</Link> : null}
-                    <p className={cn("text-xs font-medium text-umber", offers.length === 1 && "mt-3")}>Applied automatically at checkout{o.endsAt ? ` · until ${o.endsAt}` : ""}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* ── Add-on services ── */}
-      {addOns.length ? (
-        <section className="section border-t border-black/5">
-          <div className="container-x grid gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-4">
-              <SectionHeading eyebrow="Add-on services" title="We’ll handle" accent="the rest." intro="Add these while booking, or ask us on WhatsApp during your stay." />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-8">
-              {addOns.slice(0, 6).map((a) => (
-                <div key={a._id} className="flex gap-4 rounded-3xl border border-black/[0.06] p-6 transition-shadow hover:shadow-[0_18px_40px_-20px_rgba(18,17,16,0.25)]">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-paper text-umber">
-                    <Icon name={a.icon} className="h-5 w-5" strokeWidth={1.6} />
-                  </span>
-                  <div>
-                    <h3 className="font-semibold text-ink">{a.name}</h3>
-                    {a.description ? <p className="mt-1.5 text-sm leading-relaxed text-muted">{a.description}</p> : null}
-                    <p className="mt-3 text-sm font-semibold text-umber">
-                      {a.pricingUnit === "on_request" || !a.price ? "On request" : `${formatINR(a.price)} ${a.pricingUnit.replace("per_", "/ ").replace("_", " ")}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       {/* ── FAQ ── */}
       {faqs.length ? (
-        <section className="section bg-paper">
+        <section className="section border-t border-black/5">
           <div className="container-x grid gap-12 lg:grid-cols-12">
             <div className="lg:col-span-4">
               <SectionHeading eyebrow="Questions" title="Good to" accent="know." />

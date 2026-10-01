@@ -196,7 +196,22 @@ async function main() {
   // Existing properties (seeded earlier) get default photo-tour rooms only if they have none yet.
   for (const p of PROPERTIES)
     await Property.updateOne({ slug: p.slug, $or: [{ photoTour: { $exists: false } }, { photoTour: { $size: 0 } }] }, { $set: { photoTour: defaultPhotoTour(p.type, p.bedrooms, p.bathrooms) } });
-  console.log(`✓ ${propertyIds.length} properties (existing ones left unchanged)`);
+  // The villa can also be booked room by room (Airbnb-style). Only filled in if not set up yet.
+  await Property.updateOne(
+    { slug: "kripa-nikunj", $or: [{ rooms: { $exists: false } }, { rooms: { $size: 0 } }] },
+    {
+      $set: {
+        roomBooking: { enabled: true },
+        rooms: [
+          { key: "bedroom-1", name: "Bedroom 1 · King", bedType: "King bed", bathroom: "attached", maxGuests: 3, baseRate: rs(3200), weekendRate: rs(3600), active: true },
+          { key: "bedroom-2", name: "Bedroom 2 · Queen", bedType: "Queen bed", bathroom: "attached", maxGuests: 3, baseRate: rs(2900), weekendRate: rs(3300), active: true },
+          { key: "bedroom-3", name: "Bedroom 3 · Queen", bedType: "Queen bed", bathroom: "attached", maxGuests: 3, baseRate: rs(2900), weekendRate: rs(3300), active: true },
+          { key: "bedroom-4", name: "Bedroom 4 · Twin", bedType: "Two single beds", bathroom: "attached", maxGuests: 3, baseRate: rs(2600), weekendRate: rs(3000), active: true },
+        ],
+      },
+    },
+  );
+  console.log(`✓ ${propertyIds.length} properties (existing ones left unchanged; Kripa Nikunj rooms added if missing)`);
 
   /* Itineraries + Stay & Food packages */
   const daysFor = (n: number) => {

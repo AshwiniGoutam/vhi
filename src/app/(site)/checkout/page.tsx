@@ -5,6 +5,7 @@ import { CheckoutClient } from "@/components/booking/checkout-client";
 import { stayQuoteSchema, tourQuoteSchema } from "@/server/validation";
 import { getPropertyBySlug, getTourBySlug, getPackageBySlug } from "@/server/services/catalog.service";
 import { plural } from "@/lib/utils";
+import { bookableRooms, roomKeyOf } from "@/lib/rooms";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
@@ -46,11 +47,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   if (!data) redirect("/stays");
   const pkg = r.packageSlug ? await getPackageBySlug(r.packageSlug) : null;
   const nights = Math.round((Date.parse(r.checkOut) - Date.parse(r.checkIn)) / 86_400_000);
+  const roomNames = (r.roomKeys ?? []).map((k) => bookableRooms(data.property).find((x) => roomKeyOf(x) === k)?.name).filter((n): n is string => !!n);
   return (
     <CheckoutClient
       vertical="stay"
       request={r}
-      title={pkg ? `${pkg.pkg.title} · ${data.property.name}` : data.property.name}
+      title={pkg ? `${pkg.pkg.title} · ${data.property.name}` : roomNames.length ? `${data.property.name} · ${roomNames.join(", ")}` : data.property.name}
       subtitle={`${fmt(r.checkIn)} → ${fmt(r.checkOut)} · ${plural(nights, "night")} · ${plural(r.adults + r.children, "guest")}`}
       backHref={pkg ? `/stay-food/${pkg.pkg.slug}` : `/stays/${data.property.slug}`}
       policySummary={(pkg?.policy ?? data.policy)?.summary}

@@ -6,7 +6,7 @@ import { Reveal } from "@/components/site/reveal";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { HeroSlider, type HeroSlide } from "@/components/site/hero-slider";
 import { listBanners, listProperties } from "@/server/services/catalog.service";
-import { isStayAvailable } from "@/server/services/availability.service";
+import { availabilityForListing } from "@/server/services/availability.service";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -30,7 +30,7 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
   let properties = allProperties;
   const withDates = sp.checkIn && sp.checkOut && dateRx.test(sp.checkIn) && dateRx.test(sp.checkOut) && sp.checkOut > sp.checkIn;
   if (withDates) {
-    const checks = await Promise.all(properties.map((p) => isStayAvailable(p, sp.checkIn!, sp.checkOut!).then((r) => r.available).catch(() => true)));
+    const checks = await Promise.all(properties.map((p) => availabilityForListing(p, sp.checkIn!, sp.checkOut!).then((r) => r.available).catch(() => true)));
     properties = properties.filter((_, i) => checks[i]);
   }
 

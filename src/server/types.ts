@@ -46,6 +46,8 @@ export interface PropertyDTO {
   extraGuest?: { enabled: boolean; adultPerNight: number; childPerNight: number };
   amenityIds?: string[];
   amenities?: AmenityDTO[];
+  roomBooking?: { enabled?: boolean };
+  rooms?: RoomDTO[];
   houseRules?: string[];
   checkInTime?: string;
   checkOutTime?: string;
@@ -65,6 +67,19 @@ export interface PropertyDTO {
   cancellationPolicyId?: string;
   faqs?: FaqItem[];
   seo?: Seo;
+}
+
+export interface RoomDTO {
+  key?: string;
+  name: string;
+  description?: string;
+  bedType?: string;
+  bathroom?: "attached" | "shared";
+  maxGuests: number;
+  baseRate: number;
+  weekendRate?: number;
+  image?: MediaRef;
+  active?: boolean;
 }
 
 export interface MealPlanDTO {

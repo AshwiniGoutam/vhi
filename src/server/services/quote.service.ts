@@ -11,6 +11,7 @@ import {
 } from "./pricing";
 import { channelManager } from "@/lib/integrations/channel-manager";
 import { channelRef } from "./availability.service";
+import { bookableRooms, roomKeyOf } from "@/lib/rooms";
 
 export interface AddOnRequest {
   id: string;
@@ -26,6 +27,8 @@ export interface StayQuoteRequest {
   children: number;
   childAges: number[];
   mealPlanId?: string;
+  /** Individual rooms in a room-enabled villa; empty/undefined = the entire property */
+  roomKeys?: string[];
   addOns: AddOnRequest[];
   couponCode?: string;
   phone?: string;
@@ -157,8 +160,17 @@ export async function quoteStayRequest(req: StayQuoteRequest) {
   if (req.mealPlanId && !meal) throw new AppError("NOT_FOUND", "That meal plan isn't available.");
   const addOns = serialize<AddOnDTO[]>(addOnDocs);
 
+  // Individual rooms (Airbnb-style): price and capacity come from the selected rooms.
+  const rooms = bookableRooms(property);
+  const roomKeys = Array.from(new Set(req.roomKeys ?? []));
+  const selectedRooms = roomKeys.map((k) => rooms.find((r) => roomKeyOf(r) === k));
+  if (roomKeys.length && !rooms.length) throw new AppError("NOT_ELIGIBLE", "This stay can only be booked as a whole.");
+  if (selectedRooms.some((r) => !r)) throw new AppError("NOT_FOUND", "One of the selected rooms isn't available.");
+  const pickedRooms = selectedRooms.filter((r): r is NonNullable<typeof r> => !!r);
+  if (pkg && pickedRooms.length) throw new AppError("NOT_ELIGIBLE", "Packages are booked for the whole home.");
+
   let channelRates: Record<string, number> | undefined;
-  if (property.pricingSource === "channel") {
+  if (property.pricingSource === "channel" && !pickedRooms.length) {
     const rates = await channelManager().getRates({ refs: [channelRef(property)], from: req.checkIn, to: req.checkOut });
     channelRates = rates[property._id];
   }
@@ -173,15 +185,32 @@ export async function quoteStayRequest(req: StayQuoteRequest) {
         adults: req.adults,
         children: req.children,
         childAges: req.childAges,
-        property: {
-          id: property._id,
-          name: property.name,
-          pricing: property.pricing,
-          pricingSource: property.pricingSource,
-          occupancy: property.occupancy,
-          extraGuest: property.extraGuest ?? { enabled: false, adultPerNight: 0, childPerNight: 0 },
-          stayRules: property.stayRules,
-        },
+        property: pickedRooms.length
+          ? {
+              id: property._id,
+              name: `${property.name} — ${pickedRooms.map((r) => r.name).join(", ")}`,
+              pricing: {
+                baseRate: pickedRooms.reduce((t, r) => t + (r.baseRate ?? 0), 0),
+                weekendRate: pickedRooms.reduce((t, r) => t + (r.weekendRate ?? r.baseRate ?? 0), 0),
+                weekendDays: property.pricing.weekendDays,
+              },
+              pricingSource: "local" as const,
+              occupancy: (() => {
+                const cap = pickedRooms.reduce((t, r) => t + (r.maxGuests || 2), 0);
+                return { baseGuests: cap, maxGuests: cap, maxAdults: cap, maxChildren: cap };
+              })(),
+              extraGuest: { enabled: false, adultPerNight: 0, childPerNight: 0 },
+              stayRules: property.stayRules,
+            }
+          : {
+              id: property._id,
+              name: property.name,
+              pricing: property.pricing,
+              pricingSource: property.pricingSource,
+              occupancy: property.occupancy,
+              extraGuest: property.extraGuest ?? { enabled: false, adultPerNight: 0, childPerNight: 0 },
+              stayRules: property.stayRules,
+            },
         priceRules: engineRules(rulesDocs),
         channelRates,
         mealPlan: meal
@@ -204,7 +233,7 @@ export async function quoteStayRequest(req: StayQuoteRequest) {
         today,
       }),
     );
-    return { ...result, property, pkg, meal, addOns, settings };
+    return { ...result, property, pkg, meal, addOns, settings, rooms: pickedRooms.map((r) => ({ key: roomKeyOf(r), name: r.name })) };
   } catch (e) {
     if (e instanceof QuoteError) throw new AppError(e.code, e.message, 422, e.details);
     throw e;

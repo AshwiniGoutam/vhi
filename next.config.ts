@@ -9,7 +9,7 @@ const securityHeaders = [
 
 const config: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["mongoose"],
+  serverExternalPackages: ["mongoose", "nodemailer"],
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

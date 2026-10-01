@@ -30,6 +30,8 @@ export const stayQuoteSchema = z
     checkOut: isoDate,
     ...party,
     mealPlanId: objectId.optional(),
+    /** Individual rooms of a villa; omit for the whole property */
+    roomKeys: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
     addOns: addOnsSchema,
     couponCode: z.string().trim().max(40).optional(),
   })
